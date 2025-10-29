@@ -1,79 +1,194 @@
+from flask import Flask, render_template, request
 import mysql.connector
-from mysql.connector import errorcode
 from config import MYSQL_CONFIG
+import gradio as gr
+import threading
+app = Flask(__name__)
 
-def init_db():
+# 连接数据库（使用config中的配置，不重复指定charset）
+def get_db_connection():
     try:
-        # 1. 连接MySQL服务器（不指定数据库）
-        conn = mysql.connector.connect(
-            host=MYSQL_CONFIG["host"],
-            user=MYSQL_CONFIG["user"],
-            password=MYSQL_CONFIG["password"],
-            port=MYSQL_CONFIG["port"],
-            charset="utf8mb4"  # 强制客户端编码
+        # 直接使用MYSQL_CONFIG，不再额外额外添加charset
+        conn = mysql.connector.connect(**MYSQL_CONFIG)
+        conn.autocommit = True
+        return conn
+    except Exception as e:
+        print(f"❌ 数据库连接失败：{e}")
+        raise
+
+# 首页路由
+@app.route('/')
+def index():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)  # 返回字典格式
+    cursor.execute("SELECT * FROM products")
+    products = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template('index.html', products=products)
+
+# 筛选结果路由
+@app.route('/result', methods=['GET'])
+def result():
+    categories = request.args.getlist('category')
+    price_range = request.args.get('priceRange', '')
+    shipping = request.args.get('shipping', '')
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    query = "SELECT * FROM products WHERE 1=1"
+    params = []
+
+    # 类别筛选
+    if categories:
+        placeholders = ", ".join(["%s"] * len(categories))
+        query += f" AND category IN ({placeholders})"
+        params.extend(categories)
+
+    # 价格筛选
+    if price_range == '0-100':
+        query += " AND price BETWEEN 0 AND 100"
+    elif price_range == '100-500':
+        query += " AND price BETWEEN 101 AND 500"
+    elif price_range == '500+':
+        query += " AND price > 500"
+
+    # 包邮筛选
+    if shipping == 'yes':
+        query += " AND free_shipping = 1"
+    elif shipping == 'no':
+        query += " AND free_shipping = 0"
+
+    cursor.execute(query, params)
+    results = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    # 生成集合表达式
+    expr_parts = []
+    if categories:
+        expr_parts.append('∪'.join([f'{c}集合' for c in categories]))
+    if price_range:
+        expr_map = {'0-100':'0-100元','100-500':'100-500元','500+':'500元以上'}
+        expr_parts.append(f'{expr_map[price_range]}集合')
+    if shipping:
+        expr_parts.append('包邮集合' if shipping=='yes' else '非包邮集合')
+    expression = ' ∩ '.join(expr_parts) if expr_parts else '全集合'
+
+    return render_template('result.html', results=results, expression=expression)
+
+# Gradio相关功能
+def get_all_categories():
+    """获取所有商品类别"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT category FROM products")
+    categories = [row[0] for row in cursor.fetchall()]
+    cursor.close()
+    conn.close()
+    return categories
+
+def search_products(categories, price_range, free_shipping):
+    """Gradio搜索函数 - 处理默认提示值"""
+    # 忽略默认提示值（视为不筛选）
+    if price_range == "请选择价格范围":
+        price_range = ""
+    if free_shipping == "请选择是否包邮":
+        free_shipping = ""
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    query = "SELECT * FROM products WHERE 1=1"
+    params = []
+
+    # 类别筛选
+    if categories:
+        placeholders = ", ".join(["%s"] * len(categories))
+        query += f" AND category IN ({placeholders})"
+        params.extend(categories)
+
+    # 价格筛选
+    if price_range == '0-100元':
+        query += " AND price BETWEEN 0 AND 100"
+    elif price_range == '100-500元':
+        query += " AND price BETWEEN 101 AND 500"
+    elif price_range == '500元以上':
+        query += " AND price > 500"
+
+    # 包邮筛选
+    if free_shipping == "是":
+        query += " AND free_shipping = 1"
+    elif free_shipping == "否":
+        query += " AND free_shipping = 0"
+
+    cursor.execute(query, params)
+    results = cursor.fetchall()
+    cursor.close()
+    conn.close()
+
+    # 格式化输出结果
+    if not results:
+        return "没有找到符合条件的商品"
+    
+    output = []
+    for item in results:
+        shipping_status = "包邮" if item["free_shipping"] else "不包邮"
+        output.append(
+            f"ID: {item['id']}\n"
+            f"名称: {item['name']}\n"
+            f"📷 图片：{image_markdown}\n"  # 显示图片
+            f"类别: {item['category']}\n"
+            f"价格: {item['price']}元\n"
+            f"运费: {shipping_status}\n"
+            "-------------------------"
         )
-        cursor = conn.cursor()
+    return "\n".join(output)
 
-        # 2. 创建数据库（指定UTF-8编码）
-        db_name = MYSQL_CONFIG["database"]
-        cursor.execute(f"""
-            CREATE DATABASE IF NOT EXISTS {db_name} 
-            DEFAULT CHARACTER SET utf8mb4 
-            DEFAULT COLLATE utf8mb4_general_ci
-        """)
-        print(f"✅ 数据库 {db_name} 创建成功（UTF-8编码）")
-
-        # 3. 切换到创建的数据库
-        conn.database = db_name
-
-        # 4. 创建商品表（强制UTF-8编码，与原结构一致）
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS products (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,  # 商品名称
-                category VARCHAR(50) NOT NULL,  # 类别
-                price INT NOT NULL,  # 价格
-                free_shipping TINYINT NOT NULL,  # 1=包邮，0=不包邮
-                image_url VARCHAR(255) COMMENT '商品图片路径'  # 新增商品图片路径字段
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-        ''')
-        print("✅ 表 products 创建成功（支持中文）")
+def create_gradio_interface():
+    """创建Gradio界面 - 用value替代placeholder"""
+    categories = get_all_categories()
+    with gr.Blocks(title="商品查询系统") as demo:
+        gr.Markdown("# 商品信息查询")
+        gr.Markdown("### 请选择筛选条件，点击【搜索】查看结果（含商品图片）")
+        with gr.Row():
+            with gr.Column(scale=1):
+                category_checkbox = gr.CheckboxGroup(
+                    choices=categories,
+                    label="商品类别"
+                )
+                # 用value设置默认提示文字（替代placeholder）
+                price_dropdown = gr.Dropdown(
+                    choices=["请选择价格范围", "0-100元", "100-500元", "500元以上"],  # 提示文字作为第一个选项
+                    label="价格范围",
+                    value="请选择价格范围"  # 默认显示提示
+                )
+                # 用value设置默认提示文字（替代placeholder）
+                shipping_radio = gr.Radio(
+                    choices=["请选择是否包邮", "是", "否"],  # 提示文字作为第一个选项
+                    label="是否包邮",
+                    value="请选择是否包邮"  # 默认显示提示
+                )
+                search_btn = gr.Button("搜索")
+            
+            with gr.Column(scale=2):
+                result_text = gr.Markdown(
+                    label="查询结果",
+                )
         
+        # 设置点击事件
+        search_btn.click(
+            fn=search_products,
+            inputs=[category_checkbox, price_dropdown, shipping_radio],
+            outputs=result_text
+        )
+    
+    return demo
 
-        # 5. 清空旧数据并插入初始数据（中文正常显示）
-        cursor.execute("TRUNCATE TABLE products")
-        data = [
-            ("牛仔裤", "服装", 299, 0, "static/images/1.png"),
-            ("连衣裙", "服装", 399, 0, "static/images/2.png"),
-            ("T恤", "服装", 99, 0, "static/images/3.png"),
-            ("饼干", "食品", 19, 1, "static/images/4.png"),
-            ("牛奶", "食品", 29, 1, "static/images/5.png"),
-            ("巧克力", "食品", 59, 1, "static/images/6.png"),
-            ("冰箱", "家电", 2999, 1, "static/images/7.png"),
-            ("洗衣机", "家电", 1500, 1, "static/images/8.png"),
-            ("笔记本电脑", "家电", 6999, 1, "static/images/9.png")
-        ]
-        # 执行批量插入（包含image_url字段）
-        cursor.executemany('''
-            INSERT INTO products 
-            (name, category, price, free_shipping, image_url) 
-            VALUES (%s, %s, %s, %s, %s)
-        ''', data)
-        conn.commit()
-        print(f"✅ 插入 {len(data)} 条初始数据（中文正常）")
+# 生成Gradio实例
+gradio_demo = create_gradio_interface()
 
-    except mysql.connector.Error as err:
-        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-            print("❌ 错误：用户名或密码不正确")
-        else:
-            print(f"❌ 初始化失败：{err}")
-    finally:
-        if 'conn' in locals() and conn.is_connected():
-            cursor.close()
-            conn.close()
-
+# 启动应用的代码（放在最后）
 if __name__ == '__main__':
-    # 监听 0.0.0.0 地址，端口使用 Render 提供的环境变量 PORT（默认 10000）
     import os
-    port = int(os.environ.get('PORT', 5000))  # 优先使用 Render 分配的端口
-    app.run(host='0.0.0.0', port=port)  # 关键：绑定 0.0.0.0 允许外部访问
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)  # 此时 app 已定义，不会报错
