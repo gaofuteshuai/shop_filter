@@ -1,0 +1,4 @@
+flask
+mysql-connector-python
+gradio
+numpy  # 显式添加 numpy，确保优先安装

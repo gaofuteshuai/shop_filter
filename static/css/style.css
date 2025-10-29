@@ -1,0 +1,348 @@
+/* 引入Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+/* 全局重置与基础样式 */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    /* 增强蓝白渐变，提升动态元素对比度 */
+    background: linear-gradient(135deg, #61A8E8,#7EBAEC,#B8C8E1,#D0D9E0,#ECE8E5,#FAEADA);
+    color: #7492c9;
+    line-height: 1.6;
+    padding-top: 20px;
+    min-height: 100vh;
+    margin: 0;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* -------------------------- 增强动态漂浮效果 -------------------------- */
+/* 1. 白云漂浮元素 */
+.cloud {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.95); /* 提高白色透明度 */
+    border-radius: 50%;
+    filter: blur(10px); /* 增加模糊度，强化云朵感 */
+    z-index: -1;
+    animation: cloudFloat 18s infinite linear; /* 加快移动速度 */
+}
+/* 白云大小/位置/延迟差异化 */
+.cloud:nth-child(1) {
+    width: 250px;
+    height: 120px;
+    top: 10%;
+    left: -280px;
+    animation-delay: 0s;
+}
+.cloud:nth-child(2) {
+    width: 300px;
+    height: 150px;
+    top: 40%;
+    left: -320px;
+    animation-delay: 5s;
+}
+.cloud:nth-child(3) {
+    width: 220px;
+    height: 100px;
+    top: 70%;
+    left: -250px;
+    animation-delay: 3s;
+}
+/* 白云漂浮动画（更快移动） */
+@keyframes cloudFloat {
+    0% {
+        transform: translateX(0) translateY(5px);
+    }
+    100% {
+        transform: translateX(calc(100vw + 400px)) translateY(5px);
+    }
+}
+
+/* 2. 星点闪烁元素 */
+.star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 0 15px rgba(255, 255, 255, 1); /* 增强发光强度 */
+    z-index: -2;
+    animation: starTwinkle 2s infinite ease-in-out; /* 加快闪烁频率 */
+}
+/* 星点大小/位置/延迟差异化 */
+.star:nth-child(4) { width: 8px; height: 8px; top: 12%; left: 20%; animation-delay: 0s; }
+.star:nth-child(5) { width: 5px; height: 5px; top: 42%; left: 72%; animation-delay: 1s; }
+.star:nth-child(6) { width: 10px; height: 10px; top: 82%; left: 42%; animation-delay: 0.5s; }
+.star:nth-child(7) { width: 3px; height: 3px; top: 28%; left: 52%; animation-delay: 1.5s; }
+.star:nth-child(8) { width: 6px; height: 6px; top: 68%; left: 82%; animation-delay: 2s; }
+.star:nth-child(9) { width: 5px; height: 5px; top: 18%; left: 88%; animation-delay: 0.8s; }
+/* 星点闪烁动画（更快更亮） */
+@keyframes starTwinkle {
+    0%, 100% {
+        opacity: 0.4;
+        box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+    }
+    50% {
+        opacity: 1;
+        box-shadow: 0 0 20px rgba(255, 255, 255, 1);
+    }
+}
+
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+    position: relative;
+    z-index: 1;
+}
+
+/* 标题美化 */
+h2 {
+    text-align: center;
+    margin-bottom: 2rem;
+    color: #0056b3;
+    font-weight: 700;
+    font-size: 1.8rem;
+    position: relative;
+    padding-bottom: 15px;
+}
+
+h2::after {
+    content: '';
+    position: absolute;
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #0056b3);
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 2px;
+}
+
+/* 卡片统一风格 */
+.card {
+    border-radius: 16px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06), 0 2px 6px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s ease-out;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    border: none;
+}
+
+.card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 16px 32px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 123, 255, 0.1);
+}
+
+.card-header {
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid #e9ecef;
+    padding: 1rem 1.25rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* 折叠按钮美化 */
+.btn-link {
+    color: #0056b3;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    font-weight: 500;
+    transition: color 0.2s ease;
+}
+
+.btn-link:hover {
+    color: #003d82;
+    text-decoration: none;
+}
+
+/* 表单区域 */
+form.card {
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.95), rgba(248, 253, 255, 0.95));
+    border: 1px solid #e0e7ff;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #2c3e50;
+    margin-bottom: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 复选框/单选按钮美化 */
+.form-check-input {
+    border: 2px solid #adb5bd;
+    transition: all 0.2s ease;
+    transform: scale(1.1);
+}
+
+.form-check-input:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.form-check-label {
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* 下拉选择框 */
+.form-select {
+    border: 1.5px solid #ced4da;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.2);
+}
+
+/* 主要按钮 */
+.btn-primary {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+    border: none;
+    padding: 12px 32px;
+    font-size: 16px;
+    font-weight: 500;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3, #003d82);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 123, 255, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* 返回按钮 */
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+    display: block;
+    margin: 2rem auto 0;
+    text-align: center;
+}
+
+.btn-secondary:hover {
+    background-color: #5a6268;
+}
+
+/* 警告提示框 */
+.alert-info {
+    background-color: rgba(214, 235, 255, 0.9);
+    color: #004085;
+    border: none;
+    border-left: 5px solid #007bff;
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    font-size: 1rem;
+    margin-bottom: 2rem;
+    backdrop-filter: blur(8px);
+}
+
+/* 商品结果卡片 */
+.result-card {
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.result-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.result-card .card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 1.3rem;
+}
+
+.result-card h5 {
+    color: #0056b3;
+    font-weight: 600;
+    margin-bottom: 0.8rem;
+    font-size: 1.1rem;
+}
+
+.result-card p {
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+    color: #495057;
+}
+
+/* 响应式优化：调整动态元素在移动端的显示 */
+@media (max-width: 768px) {
+    .container {
+        padding: 0 12px;
+    }
+
+    h2 {
+        font-size: 1.6rem;
+    }
+
+    .row [class*="col-"] {
+        text-align: center;
+    }
+
+    .btn-primary {
+        width: 100%;
+        max-width: 300px;
+        margin: 0 auto;
+    }
+
+    .btn-secondary {
+        max-width: 300px;
+    }
+
+    /* 移动端动态元素调整：缩小尺寸，避免占满屏幕 */
+    .cloud:nth-child(1) { width: 180px; height: 90px; }
+    .cloud:nth-child(2) { width: 220px; height: 110px; }
+    .cloud:nth-child(3) { width: 160px; height: 80px; }
+    
+    .star { transform: scale(0.7); }
+    
+    .meteor { height: 70px; }
+    .meteor:nth-child(11) { height: 90px; }
+}
+
+@media (max-width: 576px) {
+    .form-check-inline {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .form-check-inline:last-child {
+        margin-bottom: 1rem;
+    }
+}
